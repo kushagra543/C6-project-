@@ -4,8 +4,6 @@ import os
 import dotenv
 import json
 import re
-from fpdf import FPDF
-import io
 
 dotenv.load_dotenv()
 groq_api = os.getenv("groq_api")
@@ -22,7 +20,7 @@ def fetch_questions(text_content, quiz_level, num_questions):
                     "c": "choice here3",
                     "d": "choice here4"
                 },
-                "correct": "a"
+                "correct": "correct choice option"
             }
         ]
     }
@@ -36,7 +34,6 @@ def fetch_questions(text_content, quiz_level, num_questions):
     Make sure the questions are not repeated and all the questions conform to the given text.  
     Make sure to format your response like RESPONSE_JSON below and use it as a guide.  
     Ensure to make an array of {num_questions} MCQs in the exact same JSON structure.  
-    IMPORTANT: The "correct" field must only contain the option key ("a","b","c","d").
 
     Here is the RESPONSE_JSON:
     {RESPONSE_JSON}
@@ -68,6 +65,7 @@ def fetch_questions(text_content, quiz_level, num_questions):
     match = re.search(r'\{[\s\S]*\}', expected_response)
     if match:
         json_str = match.group(0)
+        # Replace single quotes with double quotes for valid JSON
         json_str = json_str.replace("'", '"')
         try:
             data = json.loads(json_str)
@@ -84,41 +82,16 @@ def fetch_questions(text_content, quiz_level, num_questions):
         return []
 
 
-# ---------------- PDF Generator ----------------
-def generate_pdf(questions, include_answers=False):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
 
-    pdf.cell(200, 10, txt="Generated Quiz", ln=True, align="C")
-    pdf.ln(10)
-
-    for idx, q in enumerate(questions, 1):
-        pdf.multi_cell(0, 10, txt=f"Q{idx}. {q['mcq']}")
-        for key, val in q["options"].items():
-            pdf.multi_cell(0, 10, txt=f"   {key}) {val}")
-        if include_answers:
-            correct_key = q["correct"]
-            correct_ans = q["options"].get(correct_key, "")
-            pdf.multi_cell(0, 10, txt=f"   ✅ Correct: {correct_key}) {correct_ans}")
-        pdf.ln(5)
-
-    pdf_output = io.BytesIO()
-    pdf.output(pdf_output, 'F')
-    pdf_output.seek(0)
-    return pdf_output
-
-
-# ---------------- Streamlit App ----------------
 def main():
     st.title("Quiz Generator App")
   
     text_content = st.text_area("Paste the text content here:")
    
     quiz_level = st.selectbox("Select quiz level:", ["Easy", "Medium", "Hard"])
+    # Convert quiz level to lower casing
     quiz_level_lower = quiz_level.lower()
     num_questions = st.number_input("Number of questions:", min_value=1, max_value=20, value=5)
-
     if "questions" not in st.session_state:
         st.session_state["questions"] = []
     if "correct_answers" not in st.session_state:
@@ -143,7 +116,6 @@ def main():
             options = list(question["options"].values())
             selected = st.radio(question["mcq"], options, index=None, key=f"option_{idx}")
             st.session_state["selected_options"][idx] = selected
-
         if st.button("Submit"):
             marks = 0
             st.header("Quiz Result:")
@@ -157,16 +129,5 @@ def main():
                     marks += 1
             st.subheader(f"You scored {marks} out of {len(st.session_state['questions'])}")
 
-        # ✅ PDF Download Button
-        if st.button("Download Quiz as PDF"):
-            pdf_file = generate_pdf(st.session_state["questions"], include_answers=False)  # change to True if answers needed
-            st.download_button(
-                label="📥 Click here to download PDF",
-                data=pdf_file,
-                file_name="quiz.pdf",
-                mime="application/pdf"
-            )
-
-
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
