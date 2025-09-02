@@ -41,7 +41,7 @@ def fetch_questions(text_content, quiz_level, num_questions):
     formatted_template = PROMPT_TEMPLATE
     
     response = client.chat.completions.create(
-        model="llama3-8b-8192",   # Groq ka free Llama model
+        model="llama-3.3-70b-versatile",   # Groq ka free Llama model
         messages=[
             {
                 "role": "user",
